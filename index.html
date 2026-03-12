@@ -692,13 +692,14 @@ function handlePlayerPhase(room) {
     // update my duo from room
     const me = room.players.find(p => p.id === socket.id);
     if (me && me.duo) myDuo = me.duo;
-  } else if (phase === 'scenario') {
+  } else if (phase === 'scenario' || phase === 'reading') {
     document.getElementById('pl-manche-label').textContent = `Manche ${room.currentManche + 1} / ${room.totalManches}`;
     document.getElementById('pl-scenario-text').textContent = room.scenario?.text || '';
-    document.getElementById('pl-reading-timer').textContent = '2:00';
+    if (phase === 'scenario') {
+      document.getElementById('pl-reading-timer').textContent = '2:00';
+      document.getElementById('pl-reading-timer').className = 'big-timer';
+    }
     goTo('s-player-scenario');
-  } else if (phase === 'reading') {
-    // stays on scenario screen with timer
   } else if (phase === 'interrogation') {
     questionIndex = room.currentQuestion;
     totalQuestions = room.scenario?.totalQ || 10;
