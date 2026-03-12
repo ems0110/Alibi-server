@@ -693,6 +693,7 @@ function handlePlayerPhase(room) {
     const me = room.players.find(p => p.id === socket.id);
     if (me && me.duo) myDuo = me.duo;
   } else if (phase === 'scenario' || phase === 'reading') {
+    submitted = false; // reset pour la nouvelle manche
     document.getElementById('pl-manche-label').textContent = `Manche ${room.currentManche + 1} / ${room.totalManches}`;
     document.getElementById('pl-scenario-text').textContent = room.scenario?.text || '';
     if (phase === 'scenario') {
