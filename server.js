@@ -147,7 +147,7 @@ function sanitizeRoom(room) {
     totalManches: room.totalManches,
     currentQuestion: room.currentQuestion,
     scenario: room.scenario ? { title: room.scenario.title, text: room.scenario.text, totalQ: room.scenario.questions.length } : null,
-    questionText: room.scenario && room.phase === 'interrogation' ? room.scenario.questions[room.currentQuestion] : null,
+    questionText: room.scenario && (room.phase === 'interrogation' || room.phase === 'compare') ? room.scenario.questions[room.currentQuestion] : null,
     scores: room.scores,
     mancheScores: room.mancheScores,
     answerTimer: room.answerTimer,
