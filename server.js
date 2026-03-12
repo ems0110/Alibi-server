@@ -15,22 +15,22 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 // ===== GAME DATA =====
 const SCENARIOS = [
   {
-    id: 1,
-    title: "La boulangerie",
-    text: "Vous entrez dans une boulangerie un mardi matin. Vous portez un manteau beige et une écharpe rouge. Il y a une longue file d'attente. La boulangère s'appelle Marie, elle a les cheveux noirs attachés en chignon. Elle vous tend un croissant dans un sac en papier kraft. Sur le comptoir, il y a un bocal de bonbons roses et une caisse ancienne dorée. La radio joue une chanson française. Vous payez avec un billet de 10€. En sortant, vous croisez un homme avec un chien blanc.",
-    questions: [
-      "Quel jour de la semaine ?",
-      "Quelle couleur est le manteau ?",
-      "Comment s'appelle la boulangère ?",
-      "Comment sont ses cheveux ?",
-      "Dans quoi est emballé le croissant ?",
-      "Quelle couleur sont les bonbons sur le comptoir ?",
-      "Qu'est-ce qui joue à la radio ?",
-      "Avec combien payez-vous ?",
-      "Que croisez-vous en sortant ?",
-      "De quelle couleur est le chien ?"
-    ]
-  },
+  id: 1,
+  title: "Le midi de trop",
+  text: "C'est un mardi de mai, il fait 28 degrés. Vous êtes en Première et vous avez décidé de profiter de la pause déjeuner de 1h30 pour aller 'prendre l'air'. Le groupe : Valentin, Bland, Max, Ems, Lucas et Marti. Valentin a ramené une bouteille de gnôle de son grand-père, une vieille bouteille en verre avec une étiquette jaunie écrite à la main. Vous vous installez derrière les buts du terrain de foot du quartier. Lucas a apporté une enceinte bluetooth rouge. Marti a un sandwich jambon-beurre qu'elle ne mange pas. On passe la bouteille, on chante du Jul, les pigeons s'enfuient. Lucas glisse sur l'herbe en voulant danser et se retrouve assis par terre en riant. Il reste 20 minutes avant les cours quand Ems dit 'on rentre ?'. Retour en classe. Lucas s'assoit à l'envers sur sa chaise. Bland rigole sans raison. En sortant des cours, Laetitia — la CPE — attend dans le couloir bras croisés. Elle regarde le groupe et dit : 'Vous sentez la pharmacie, venez avec moi.' Dans son bureau, elle pose des questions. Valentin répond en parlant très lentement. Max fixe le mur. Elle finit par dire 'Rentrez chez vous, on en reparlera demain' et appelle les parents de Lucas en premier.",
+  questions: [
+    "Quel jour de la semaine ?",
+    "Quelle température il faisait ?",
+    "Combien étiez-vous dans le groupe ?",
+    "D'où venait la bouteille de Valentin ?",
+    "De quelle couleur était l'enceinte de Lucas ?",
+    "Quelle chanson vous chantiez ?",
+    "Qu'est-ce que Marti avait apporté à manger ?",
+    "Qui a glissé sur l'herbe ?",
+    "Combien de minutes avant les cours Ems a proposé de rentrer ?",
+    "Que dit Laetitia en voyant le groupe dans le couloir ?"
+  ]
+},
   {
     id: 2,
     title: "Le parc en automne",
