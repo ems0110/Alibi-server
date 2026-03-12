@@ -236,15 +236,17 @@ io.on('connection', (socket) => {
   socket.on('start_reading', ({ code }) => {
     const room = getRoom(code);
     if (!room || room.gmId !== socket.id) return;
+    clearInterval(room.readingInterval);
+    clearInterval(room.questionInterval);
     room.phase = 'reading';
     broadcastRoom(code);
-    // 2 min countdown
     let t = 120;
     room.readingInterval = setInterval(() => {
       t--;
       io.to(code).emit('reading_tick', { t });
       if (t <= 0) {
         clearInterval(room.readingInterval);
+        room.readingInterval = null;
         room.phase = 'interrogation';
         room.currentQuestion = 0;
         room.answers = {};
@@ -258,18 +260,20 @@ io.on('connection', (socket) => {
   socket.on('next_question', ({ code }) => {
     const room = getRoom(code);
     if (!room || room.gmId !== socket.id) return;
+    clearInterval(room.questionInterval);
+    clearInterval(room.readingInterval);
+    room.readingInterval = null;
     room.answers = {};
     room.answerTimer = 15;
     room.phase = 'interrogation';
     broadcastRoom(code);
-    // 15s timer
     let t = 15;
     room.questionInterval = setInterval(() => {
       t--;
       io.to(code).emit('answer_tick', { t });
       if (t <= 0) {
         clearInterval(room.questionInterval);
-        // Send answers to GM
+        room.questionInterval = null;
         sendAnswersToGM(room);
       }
     }, 1000);
@@ -323,6 +327,11 @@ io.on('connection', (socket) => {
   socket.on('next_manche', ({ code }) => {
     const room = getRoom(code);
     if (!room || room.gmId !== socket.id) return;
+    // Clear any running timers
+    clearInterval(room.readingInterval);
+    clearInterval(room.questionInterval);
+    room.readingInterval = null;
+    room.questionInterval = null;
     room.currentManche++;
     if (room.currentManche >= room.totalManches) {
       room.phase = 'final';
@@ -330,6 +339,7 @@ io.on('connection', (socket) => {
       room.scenario = pickScenario(room);
       room.currentQuestion = 0;
       room.answers = {};
+      room.totalAnswersExpected = duoMemberCount(room);
       room.phase = 'scenario';
     }
     broadcastRoom(code);
