@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Alibi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+:root {
+  --bg: #0E0C0A;
+  --surface: #1A1714;
+  --surface2: #252119;
+  --border: #333027;
+  --text: #F0EDE8;
+  --text2: #8A8478;
+  --accent: #E8954A;
+  --accent2: #4A9E7F;
+  --danger: #C84B31;
+  --gold: #E8C84A;
+  --r: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Instrument Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+}
+.app {
+  width: 100%; max-width: 430px; height: 100vh;
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+}
+.screen {
+  display: none; flex-direction: column; flex: 1;
+  padding: 32px 22px 36px; overflow-y: auto;
+  animation: up .3s ease;
+}
+.screen.active { display: flex; }
+@keyframes up { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+/* TYPOGRAPHY */
+.syne { font-family: 'Syne', sans-serif; }
+h1 { font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800; line-height: 1.05; letter-spacing: -1px; }
+h2 { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+h3 { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; }
+.cap { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text2); }
+
+/* BUTTONS */
+.btn {
+  display: block; width: 100%; padding: 16px 20px;
+  border: none; border-radius: var(--r);
+  font-family: 'Instrument Sans', sans-serif; font-size: 1rem; font-weight: 600;
+  cursor: pointer; transition: transform .15s, opacity .15s;
+  text-align: center;
+}
+.btn:active { transform: scale(0.97); }
+.btn + .btn { margin-top: 10px; }
+.btn-accent { background: var(--accent); color: #0E0C0A; }
+.btn-surface { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+.btn-ghost { background: transparent; color: var(--text2); font-size: 0.9rem; }
+.btn-green { background: var(--accent2); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-gold { background: var(--gold); color: #0E0C0A; }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+
+/* INPUTS */
+input[type=text], input[type=number], textarea {
+  width: 100%; padding: 14px 16px; border-radius: 12px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  font-family: 'Instrument Sans', sans-serif; font-size: 1rem; color: var(--text);
+  outline: none; transition: border-color .2s;
+}
+input[type=text]:focus, input[type=number]:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: none; height: 80px; }
+.input-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+
+/* CARDS */
+.card {
+  background: var(--surface); border-radius: var(--r);
+  padding: 18px; border: 1px solid var(--border);
+}
+.card + .card { margin-top: 10px; }
+
+/* BADGE */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 99px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+}
+
+/* PROGRESS */
+.prog-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+
+/* TIMER */
+.big-timer {
+  font-family: 'Syne', sans-serif; font-size: 5rem; font-weight: 800;
+  line-height: 1; text-align: center; color: var(--accent);
+  transition: color .3s;
+}
+.big-timer.urgent { color: var(--danger); }
+
+/* SCENARIO */
+.scenario-text {
+  background: var(--surface2); border-radius: var(--r); padding: 20px;
+  font-size: 0.95rem; line-height: 1.7; color: var(--text);
+  border-left: 3px solid var(--accent); margin: 16px 0;
+}
+
+/* PLAYER CHIPS */
+.player-grid { display: flex; flex-direction: column; gap: 8px; }
+.player-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2); border-radius: 12px; padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+.player-row .pname { font-weight: 600; font-size: 0.95rem; }
+.player-row .pduo { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; }
+
+/* DUO COLORS */
+.duoA { color: #E8954A; }
+.duoB { color: #4A9E7F; }
+.duoC { color: #9B7AE8; }
+.duoD { color: #E84A7A; }
+.duoE { color: #4AA8E8; }
+.duoF { color: #E8D44A; }
+
+/* DUO SELECTOR */
+.duo-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+.duo-chip {
+  padding: 8px 16px; border-radius: 99px; border: 2px solid var(--border);
+  font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all .15s;
+  background: transparent; color: var(--text2); font-family: 'Instrument Sans', sans-serif;
+}
+.duo-chip:hover { border-color: var(--text); color: var(--text); }
+.duo-chip.selected-A { border-color: #E8954A; color: #E8954A; background: rgba(232,149,74,0.12); }
+.duo-chip.selected-B { border-color: #4A9E7F; color: #4A9E7F; background: rgba(74,158,127,0.12); }
+.duo-chip.selected-C { border-color: #9B7AE8; color: #9B7AE8; background: rgba(155,122,232,0.12); }
+.duo-chip.selected-D { border-color: #E84A7A; color: #E84A7A; background: rgba(232,74,122,0.12); }
+.duo-chip.selected-E { border-color: #4AA8E8; color: #4AA8E8; background: rgba(74,168,232,0.12); }
+.duo-chip.selected-F { border-color: #E8D44A; color: #E8D44A; background: rgba(232,212,74,0.12); }
+
+/* ANSWERS DISPLAY (GM) */
+.answer-block { margin-bottom: 14px; }
+.answer-block .duo-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 8px; }
+.answer-item {
+  background: var(--surface2); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 6px; font-size: 0.92rem; border: 1px solid var(--border);
+}
+.answer-item .who { font-size: 0.7rem; color: var(--text2); margin-bottom: 3px; font-weight: 600; }
+
+/* MATCH TOGGLE */
+.match-row { display: flex; gap: 6px; margin-top: 8px; }
+.match-btn {
+  flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--text2); font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.match-btn.yes.active { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+.match-btn.no.active { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* SCORES */
+.score-line { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.score-line:last-child { border-bottom: none; }
+.score-val { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; }
+
+/* CONFETTI */
+.confetti-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99; }
+.cp { position: absolute; width: 8px; height: 8px; border-radius: 2px; animation: cf linear forwards; }
+@keyframes cf { 0%{transform:translateY(-20px) rotate(0);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+
+/* MISC */
+.mt-a { margin-top: auto; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mt-24 { margin-top: 24px; }
+.mt-32 { margin-top: 32px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-20 { margin-bottom: 20px; }
+.mb-24 { margin-bottom: 24px; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.tc { text-align: center; }
+.flex { display: flex; }
+.aic { align-items: center; }
+.jb { justify-content: space-between; }
+.g8 { gap: 8px; }
+.waiting-pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.code-display {
+  font-family: 'Syne', sans-serif; font-size: 3.5rem; font-weight: 800;
+  letter-spacing: 0.2em; color: var(--accent); text-align: center;
+  background: var(--surface2); border-radius: var(--r); padding: 16px;
+  border: 2px dashed var(--border); margin: 16px 0;
+}
+.waiting-msg { color: var(--text2); font-size: 0.88rem; text-align: center; }
+
+/* GM NUMBER INPUT */
+.num-row { display: flex; align-items: center; gap: 12px; justify-content: center; margin: 16px 0; }
+.num-btn { width: 48px; height: 48px; border-radius: 12px; background: var(--surface2); border: 1.5px solid var(--border); color: var(--text); font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; transition: background .15s; }
+.num-btn:hover { background: var(--border); }
+.num-val { font-family: 'Syne', sans-serif; font-size: 2.2rem; font-weight: 800; color: var(--accent); min-width: 40px; text-align: center; }
+
+.answer-submitted-overlay {
+  text-align: center; padding: 32px 0;
+}
+.answer-submitted-overlay .big-icon { font-size: 4rem; margin-bottom: 16px; }
+
+.q-bubble {
+  background: var(--surface2); border-radius: var(--r); padding: 20px;
+  border-left: 3px solid var(--gold); margin-bottom: 20px;
+}
+.q-bubble .q-num { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 6px; }
+.q-bubble .q-text { font-size: 1.05rem; font-weight: 600; line-height: 1.4; }
+
+/* READING PHASE PLAYER */
+.reading-box {
+  background: var(--surface2); border-radius: var(--r); padding: 24px;
+  border: 1px solid var(--border); text-align: center;
+}
+
+.gm-crown { font-size: 1.4rem; }
+
+.role-card {
+  border-radius: var(--r); padding: 24px; text-align: center;
+  cursor: pointer; border: 2px solid var(--border);
+  transition: all .2s; background: var(--surface);
+}
+.role-card:hover { border-color: var(--accent); }
+.role-card .icon { font-size: 2.8rem; margin-bottom: 12px; }
+.role-card h3 { margin-bottom: 6px; }
+.role-card p { font-size: 0.85rem; color: var(--text2); line-height: 1.5; }
+
+.inline-code {
+  display: inline-block; background: var(--surface2); padding: 3px 10px;
+  border-radius: 8px; font-family: 'Syne', sans-serif; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--accent); font-size: 0.9rem;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <div class="screen active" id="s-home">
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <div class="cap mb-12">Jeu de mémoire</div>
+      <h1 style="margin-bottom:8px;">Alibi</h1>
+      <p style="color:var(--text2); font-size:0.95rem; line-height:1.6; margin-bottom:40px;">
+        Mémorisez un scénario en duo, répondez séparément. Le duo qui pense <em>pareil</em> gagne.
+      </p>
+      <label class="input-label">Votre prénom</label>
+      <input type="text" id="home-name" placeholder="Ex: Marie" maxlength="18" style="margin-bottom:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="role-card" onclick="chooseRole('gm')">
+          <div class="icon">👑</div>
+          <h3>Maître du jeu</h3>
+          <p>Créez une partie, gérez les questions et arbitrez les réponses.</p>
+        </div>
+        <div class="role-card" onclick="chooseRole('player')">
+          <div class="icon">🎮</div>
+          <h3>Joueur</h3>
+          <p>Rejoignez une partie avec un code et jouez en duo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOIN (PLAYER) -->
+  <div class="screen" id="s-join">
+    <button class="btn btn-ghost" style="width:auto;margin-bottom:24px;" onclick="goTo('s-home')">← Retour</button>
+    <h2 class="mb-8">Rejoindre</h2>
+    <p style="color:var(--text2);font-size:0.9rem;margin-bottom:24px;">Entrez le code de la partie donné par le maître du jeu.</p>
+    <label class="input-label">Code de partie (4 lettres)</label>
+    <input type="text" id="join-code" placeholder="Ex: GKRB" maxlength="4" style="text-transform:uppercase;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:0.2em;margin-bottom:16px;">
+    <div class="mt-a">
+      <button class="btn btn-accent" onclick="joinRoom()">Rejoindre →</button>
+    </div>
+  </div>
+
+  <!-- GM LOBBY -->
+  <div class="screen" id="s-gm-lobby">
+    <div class="flex aic jb mb-20">
+      <div>
+        <div class="cap mb-4">Maître du jeu 👑</div>
+        <h2 id="gm-name-display">Partie</h2>
+      </div>
+    </div>
+    <div class="cap mb-8">Code de la partie</div>
+    <div class="code-display" id="gm-code">----</div>
+    <p class="waiting-msg waiting-pulse mb-20">En attente des joueurs…</p>
+
+    <div class="card mb-16">
+      <div class="flex aic jb mb-12">
+        <div class="cap">Joueurs connectés</div>
+        <span class="cap" id="gm-player-count">0 joueur(s)</span>
+      </div>
+      <div class="player-grid" id="gm-player-list"></div>
+    </div>
+
+    <div class="card mb-20">
+      <div class="cap mb-12">Nombre de manches</div>
+      <div class="num-row">
+        <button class="num-btn" onclick="changeManches(-1)">−</button>
+        <div class="num-val" id="manches-val">4</div>
+        <button class="num-btn" onclick="changeManches(1)">+</button>
+      </div>
+      <p style="color:var(--text2);font-size:0.8rem;text-align:center;">Chaque manche = un scénario pour tous les duos</p>
+    </div>
+
+    <div class="mt-a">
+      <button class="btn btn-accent" id="start-btn" onclick="startGame()" disabled>Lancer la partie →</button>
+    </div>
+  </div>
+
+  <!-- PLAYER LOBBY -->
+  <div class="screen" id="s-player-lobby">
+    <div class="cap mb-8">Connecté(e) ✓</div>
+    <h2 id="player-lobby-title" class="mb-4">Partie</h2>
+    <p style="color:var(--text2);font-size:0.88rem;margin-bottom:20px;">Code : <span class="inline-code" id="player-lobby-code">----</span></p>
+
+    <div class="card mb-16">
+      <div class="cap mb-12">Choisissez votre duo</div>
+      <div class="duo-selector" id="duo-selector">
+        <button class="duo-chip duoA" data-duo="A" onclick="selectDuo('A')">Duo A</button>
+        <button class="duo-chip duoB" data-duo="B" onclick="selectDuo('B')">Duo B</button>
+        <button class="duo-chip duoC" data-duo="C" onclick="selectDuo('C')">Duo C</button>
+        <button class="duo-chip duoD" data-duo="D" onclick="selectDuo('D')">Duo D</button>
+        <button class="duo-chip duoE" data-duo="E" onclick="selectDuo('E')">Duo E</button>
+        <button class="duo-chip duoF" data-duo="F" onclick="selectDuo('F')">Duo F</button>
+      </div>
+      <p style="color:var(--text2);font-size:0.8rem;margin-top:10px;">Vous pourrez voir quels autres joueurs sont dans votre duo.</p>
+    </div>
+
+    <div class="card">
+      <div class="flex aic jb mb-12">
+        <div class="cap">Tous les joueurs</div>
+        <span class="cap" id="pl-count">0</span>
+      </div>
+      <div class="player-grid" id="player-lobby-list"></div>
+    </div>
+
+    <div class="mt-a mt-24">
+      <p class="waiting-msg waiting-pulse">En attente du maître du jeu…</p>
+    </div>
+  </div>
+
+  <!-- GM: SCENARIO PHASE -->
+  <div class="screen" id="s-gm-scenario">
+    <div class="cap mb-8" id="gm-manche-label">Manche 1</div>
+    <h2 class="mb-4" id="gm-scenario-title">Scénario</h2>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:4px;">Chaque duo s'isole pour lire ce scénario pendant <strong>2 minutes</strong>.</p>
+    <div class="scenario-text" id="gm-scenario-text"></div>
+    <div class="card mb-16">
+      <div class="cap mb-8">Questions de cette manche</div>
+      <div id="gm-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="mt-a">
+      <button class="btn btn-accent" onclick="gmStartReading()">Lancer le timer de lecture (2 min) →</button>
+    </div>
+  </div>
+
+  <!-- PLAYER: SCENARIO PHASE -->
+  <div class="screen" id="s-player-scenario">
+    <div class="cap mb-8" id="pl-manche-label">Manche 1</div>
+    <h2 class="mb-4">Lisez le scénario</h2>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:4px;">Isolez-vous avec votre duo et mémorisez !</p>
+    <div class="scenario-text" id="pl-scenario-text"></div>
+    <div class="reading-box mt-16">
+      <div class="cap mb-8">Temps de lecture</div>
+      <div class="big-timer" id="pl-reading-timer">2:00</div>
+      <p style="color:var(--text2);font-size:0.82rem;margin-top:8px;">Revenez dans la salle quand le timer se termine.</p>
+    </div>
+  </div>
+
+  <!-- GM: READING PHASE -->
+  <div class="screen" id="s-gm-reading">
+    <div class="cap mb-8" id="gm-reading-manche">Manche 1</div>
+    <h2 class="mb-16">Lecture en cours…</h2>
+    <div style="text-align:center;padding:32px 0;">
+      <div class="big-timer" id="gm-reading-timer">2:00</div>
+      <p style="color:var(--text2);font-size:0.88rem;margin-top:12px;">Les duos lisent le scénario.</p>
+    </div>
+    <div class="card mt-16">
+      <p style="font-size:0.88rem;color:var(--text2);">Quand tout le monde est revenu, lancez l'interrogatoire manuellement.</p>
+    </div>
+    <div class="mt-a">
+      <button class="btn btn-accent" onclick="gmForceStart()">Tous revenus — Commencer l'interrogatoire →</button>
+    </div>
+  </div>
+
+  <!-- GM: ASK QUESTION -->
+  <div class="screen" id="s-gm-question">
+    <div class="flex aic jb mb-16">
+      <div class="cap" id="gm-q-manche">Manche 1</div>
+      <div class="cap" id="gm-q-of">Q1 / 10</div>
+    </div>
+    <div class="prog-bar mb-24">
+      <div class="prog-fill" id="gm-q-prog" style="width:0%"></div>
+    </div>
+    <div class="q-bubble">
+      <div class="q-num" id="gm-q-num">QUESTION 1</div>
+      <div class="q-text" id="gm-q-text">…</div>
+    </div>
+    <div class="card mb-16">
+      <div class="cap mb-8">Réponses reçues</div>
+      <div id="gm-answers-progress" style="color:var(--text2);font-size:0.9rem;">En attente…</div>
+    </div>
+    <div class="mt-a">
+      <button class="btn btn-accent" onclick="gmLaunchAnswer()">Lancer le chrono de réponses (15s) →</button>
+    </div>
+  </div>
+
+  <!-- PLAYER: ANSWER PHASE -->
+  <div class="screen" id="s-player-answer">
+    <div class="flex aic jb mb-16">
+      <div class="cap" id="pl-q-manche">Manche 1</div>
+      <div class="cap" id="pl-q-of">Q1 / 10</div>
+    </div>
+    <div class="prog-bar mb-24">
+      <div class="prog-fill" id="pl-q-prog" style="width:0%"></div>
+    </div>
+    <div class="q-bubble">
+      <div class="q-num" id="pl-q-num">QUESTION 1</div>
+      <div class="q-text" id="pl-q-text">…</div>
+    </div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="big-timer" id="pl-answer-timer">15</div>
+      <div class="cap mt-8">secondes</div>
+    </div>
+    <textarea id="pl-answer-input" placeholder="Votre réponse…"></textarea>
+    <div class="mt-a mt-16">
+      <button class="btn btn-accent" id="pl-submit-btn" onclick="submitAnswer()">Valider ma réponse ✓</button>
+    </div>
+  </div>
+
+  <!-- PLAYER: WAITING FOR NEXT Q -->
+  <div class="screen" id="s-player-wait">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+      <h3 class="mb-8">Réponse envoyée !</h3>
+      <p class="waiting-msg waiting-pulse" style="color:var(--text2);">Le maître du jeu compare les réponses…</p>
+    </div>
+  </div>
+
+  <!-- GM: COMPARE ANSWERS -->
+  <div class="screen" id="s-gm-compare">
+    <div class="flex aic jb mb-8">
+      <div class="cap" id="gm-cmp-manche">Manche 1</div>
+      <div class="cap" id="gm-cmp-of">Q1 / 10</div>
+    </div>
+    <div class="prog-bar mb-16">
+      <div class="prog-fill" id="gm-cmp-prog" style="width:0%"></div>
+    </div>
+    <div class="q-bubble mb-16">
+      <div class="q-num" id="gm-cmp-qnum">QUESTION 1</div>
+      <div class="q-text" id="gm-cmp-qtext">…</div>
+    </div>
+    <div id="gm-answers-list" style="overflow-y:auto;flex:1;"></div>
+    <div class="mt-a mt-12">
+      <button class="btn btn-accent" id="gm-validate-btn" onclick="gmValidateQuestion()">Valider et question suivante →</button>
+    </div>
+  </div>
+
+  <!-- MANCHE RESULT -->
+  <div class="screen" id="s-manche-result">
+    <div style="text-align:center;margin:32px 0 24px;">
+      <div style="font-size:3rem;margin-bottom:8px;" id="mr-emoji">🏅</div>
+      <div class="cap mb-4" id="mr-manche-label">Manche 1 terminée</div>
+      <h2 id="mr-winner">—</h2>
+    </div>
+    <div class="card mb-12" id="mr-scores"></div>
+    <div class="card">
+      <div class="cap mb-12">Scores cumulés</div>
+      <div id="mr-total-scores"></div>
+    </div>
+    <div class="mt-a mt-20" id="mr-btn-wrap">
+      <button class="btn btn-accent" onclick="gmNextManche()">Manche suivante →</button>
+    </div>
+  </div>
+
+  <!-- FINAL -->
+  <div class="screen" id="s-final">
+    <div style="text-align:center;margin:24px 0 20px;">
+      <div style="font-size:3.5rem;margin-bottom:8px;">🏆</div>
+      <div class="cap mb-4">Fin de partie</div>
+      <h2 id="final-winner">—</h2>
+      <p id="final-sub" style="color:var(--text2);font-size:0.88rem;margin-top:6px;"></p>
+    </div>
+    <div id="final-scores" class="card mb-16"></div>
+    <div class="mt-a">
+      <button class="btn btn-surface" onclick="location.reload()">Nouvelle partie</button>
+    </div>
+  </div>
+
+</div>
+<div class="confetti-wrap" id="confetti-wrap"></div>
+
+<script>
+// ===== STATE =====
+let socket;
+let myRole = null;
+let myName = '';
+let myCode = '';
+let myDuo = null;
+let totalManches = 4;
+let gmMatchDecisions = {}; // duo -> true/false for current question
+let currentAnswerData = null;
+let answerTimerInterval = null;
+let questionIndex = 0;
+let totalQuestions = 10;
+let submitted = false;
+
+const DUO_COLORS = { A:'#E8954A', B:'#4A9E7F', C:'#9B7AE8', D:'#E84A7A', E:'#4AA8E8', F:'#E8D44A' };
+const DUO_LABELS = { A:'Duo A', B:'Duo B', C:'Duo C', D:'Duo D', E:'Duo E', F:'Duo F' };
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function initSocket() {
+  socket = io();
+
+  socket.on('room_created', ({ code }) => {
+    myCode = code;
+    document.getElementById('gm-code').textContent = code;
+    document.getElementById('gm-name-display').textContent = myName;
+    goTo('s-gm-lobby');
+  });
+
+  socket.on('room_joined', ({ code }) => {
+    myCode = code;
+    document.getElementById('player-lobby-code').textContent = code;
+    document.getElementById('player-lobby-title').textContent = 'Connecté !';
+    goTo('s-player-lobby');
+  });
+
+  socket.on('error', ({ msg }) => {
+    alert(msg);
+  });
+
+  socket.on('room_update', (room) => {
+    handleRoomUpdate(room);
+  });
+
+  socket.on('reading_tick', ({ t }) => {
+    const mm = String(Math.floor(t / 60)).padStart(2, '0');
+    const ss = String(t % 60).padStart(2, '0');
+    const display = `${mm}:${ss}`;
+    setTimerDisplay('gm-reading-timer', display, t <= 10);
+    setTimerDisplay('pl-reading-timer', display, t <= 10);
+  });
+
+  socket.on('answer_tick', ({ t }) => {
+    const el = document.getElementById('pl-answer-timer');
+    if (el) {
+      el.textContent = t;
+      el.className = 'big-timer' + (t <= 5 ? ' urgent' : '');
+    }
+  });
+
+  socket.on('answer_progress', ({ submitted, expected }) => {
+    const el = document.getElementById('gm-answers-progress');
+    if (el) el.textContent = `${submitted} / ${expected} réponses reçues`;
+  });
+
+  socket.on('show_answers', ({ question, qIndex, byDuo }) => {
+    currentAnswerData = { question, qIndex, byDuo };
+    gmMatchDecisions = {};
+    showGMCompare(question, qIndex, byDuo);
+  });
+}
+
+function setTimerDisplay(id, val, urgent) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = val; el.className = 'big-timer' + (urgent ? ' urgent' : ''); }
+}
+
+function handleRoomUpdate(room) {
+  // Update lobby lists
+  if (myRole === 'gm' || myRole === 'player') {
+    updatePlayerLists(room);
+  }
+
+  const phase = room.phase;
+
+  if (myRole === 'gm') {
+    handleGMPhase(room);
+  } else {
+    handlePlayerPhase(room);
+  }
+}
+
+function updatePlayerLists(room) {
+  const players = room.players.filter(p => p.role === 'player');
+
+  // GM list
+  const gmList = document.getElementById('gm-player-list');
+  if (gmList) {
+    gmList.innerHTML = '';
+    players.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      const col = p.duo ? DUO_COLORS[p.duo] : 'var(--text2)';
+      row.innerHTML = `
+        <div>
+          <div class="pname">${p.name}${!p.connected ? ' 🔴' : ''}</div>
+          <div class="pduo" style="color:${col}">${p.duo ? DUO_LABELS[p.duo] : 'Pas encore assigné'}</div>
+        </div>
+        ${myRole === 'gm' && room.phase === 'lobby' ? `
+        <div class="duo-selector" style="gap:4px;">
+          ${['A','B','C','D','E','F'].map(d => `<button class="duo-chip duo${d} ${p.duo===d?'selected-'+d:''}" style="padding:5px 10px;font-size:0.7rem;" onclick="gmAssignDuo('${p.id}','${d}')">${d}</button>`).join('')}
+        </div>` : ''}
+      `;
+      gmList.appendChild(row);
+    });
+    document.getElementById('gm-player-count').textContent = `${players.length} joueur(s)`;
+
+    // Enable start if at least 2 players assigned to duos
+    const assigned = players.filter(p => p.duo);
+    const btn = document.getElementById('start-btn');
+    if (btn) btn.disabled = assigned.length < 2;
+  }
+
+  // Player list
+  const plList = document.getElementById('player-lobby-list');
+  if (plList) {
+    plList.innerHTML = '';
+    players.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      const col = p.duo ? DUO_COLORS[p.duo] : 'var(--text2)';
+      row.innerHTML = `
+        <div class="pname">${p.name}${p.id === socket.id ? ' (moi)' : ''}</div>
+        <div class="pduo" style="color:${col}">${p.duo ? DUO_LABELS[p.duo] : '—'}</div>
+      `;
+      plList.appendChild(row);
+    });
+    document.getElementById('pl-count').textContent = `${players.length}`;
+  }
+}
+
+function handleGMPhase(room) {
+  const phase = room.phase;
+  if (phase === 'lobby') {
+    goTo('s-gm-lobby');
+  } else if (phase === 'scenario') {
+    document.getElementById('gm-manche-label').textContent = `Manche ${room.currentManche + 1} / ${room.totalManches}`;
+    document.getElementById('gm-scenario-title').textContent = room.scenario?.title || 'Scénario';
+    document.getElementById('gm-scenario-text').textContent = room.scenario?.text || '';
+    const qList = document.getElementById('gm-questions-list');
+    if (qList && room.scenario) {
+      // We don't have questions in sanitized room — that's ok, just show count
+      qList.innerHTML = `<p style="color:var(--text2);font-size:0.85rem;">${room.scenario.totalQ} questions prévues.</p>`;
+    }
+    goTo('s-gm-scenario');
+  } else if (phase === 'reading') {
+    document.getElementById('gm-reading-manche').textContent = `Manche ${room.currentManche + 1} / ${room.totalManches}`;
+    goTo('s-gm-reading');
+  } else if (phase === 'interrogation') {
+    questionIndex = room.currentQuestion;
+    totalQuestions = room.scenario?.totalQ || 10;
+    document.getElementById('gm-q-manche').textContent = `Manche ${room.currentManche + 1}`;
+    document.getElementById('gm-q-of').textContent = `Q${questionIndex + 1} / ${totalQuestions}`;
+    document.getElementById('gm-q-num').textContent = `QUESTION ${questionIndex + 1}`;
+    document.getElementById('gm-q-text').textContent = room.questionText || '…';
+    document.getElementById('gm-q-prog').style.width = `${(questionIndex / totalQuestions) * 100}%`;
+    document.getElementById('gm-answers-progress').textContent = `En attente des réponses…`;
+    goTo('s-gm-question');
+  } else if (phase === 'compare') {
+    // show_answers event handles this
+  } else if (phase === 'manche_result') {
+    showMancheResult(room);
+  } else if (phase === 'final') {
+    showFinalScreen(room);
+  }
+}
+
+function handlePlayerPhase(room) {
+  const phase = room.phase;
+  if (phase === 'lobby') {
+    goTo('s-player-lobby');
+    // update my duo from room
+    const me = room.players.find(p => p.id === socket.id);
+    if (me && me.duo) myDuo = me.duo;
+  } else if (phase === 'scenario') {
+    document.getElementById('pl-manche-label').textContent = `Manche ${room.currentManche + 1} / ${room.totalManches}`;
+    document.getElementById('pl-scenario-text').textContent = room.scenario?.text || '';
+    document.getElementById('pl-reading-timer').textContent = '2:00';
+    goTo('s-player-scenario');
+  } else if (phase === 'reading') {
+    // stays on scenario screen with timer
+  } else if (phase === 'interrogation') {
+    questionIndex = room.currentQuestion;
+    totalQuestions = room.scenario?.totalQ || 10;
+    submitted = false;
+    document.getElementById('pl-q-manche').textContent = `Manche ${room.currentManche + 1}`;
+    document.getElementById('pl-q-of').textContent = `Q${questionIndex + 1} / ${totalQuestions}`;
+    document.getElementById('pl-q-num').textContent = `QUESTION ${questionIndex + 1}`;
+    document.getElementById('pl-q-text').textContent = room.questionText || '…';
+    document.getElementById('pl-q-prog').style.width = `${(questionIndex / totalQuestions) * 100}%`;
+    document.getElementById('pl-answer-timer').textContent = '15';
+    document.getElementById('pl-answer-timer').className = 'big-timer';
+    document.getElementById('pl-answer-input').value = '';
+    document.getElementById('pl-submit-btn').disabled = false;
+    goTo('s-player-answer');
+  } else if (phase === 'compare') {
+    if (!submitted) {
+      // auto-submit empty if didn't answer
+      socket.emit('submit_answer', { code: myCode, answer: '(sans réponse)' });
+      submitted = true;
+    }
+    goTo('s-player-wait');
+  } else if (phase === 'manche_result') {
+    showMancheResult(room);
+  } else if (phase === 'final') {
+    showFinalScreen(room);
+  }
+}
+
+function gmAssignDuo(playerId, duo) {
+  socket.emit('assign_duo', { code: myCode, playerId, duo });
+}
+
+function selectDuo(duo) {
+  myDuo = duo;
+  socket.emit('assign_duo', { code: myCode, playerId: socket.id, duo });
+  document.querySelectorAll('.duo-chip').forEach(c => {
+    c.className = `duo-chip duo${c.dataset.duo}`;
+    if (c.dataset.duo === duo) c.classList.add(`selected-${duo}`);
+  });
+}
+
+function changeManches(delta) {
+  totalManches = Math.max(1, Math.min(12, totalManches + delta));
+  document.getElementById('manches-val').textContent = totalManches;
+}
+
+function startGame() {
+  socket.emit('start_game', { code: myCode, totalManches });
+}
+
+function gmStartReading() {
+  socket.emit('start_reading', { code: myCode });
+}
+
+function gmForceStart() {
+  // Force move to interrogation phase
+  socket.emit('next_question', { code: myCode });
+}
+
+function gmLaunchAnswer() {
+  socket.emit('next_question', { code: myCode });
+}
+
+function submitAnswer() {
+  if (submitted) return;
+  submitted = true;
+  const answer = document.getElementById('pl-answer-input').value.trim() || '(sans réponse)';
+  socket.emit('submit_answer', { code: myCode, answer });
+  document.getElementById('pl-submit-btn').disabled = true;
+  document.getElementById('pl-submit-btn').textContent = 'Réponse envoyée ✓';
+}
+
+function showGMCompare(question, qIndex, byDuo) {
+  document.getElementById('gm-cmp-manche').textContent = `Manche —`;
+  document.getElementById('gm-cmp-of').textContent = `Q${qIndex + 1} / ${totalQuestions}`;
+  document.getElementById('gm-cmp-qnum').textContent = `QUESTION ${qIndex + 1}`;
+  document.getElementById('gm-cmp-qtext').textContent = question;
+  document.getElementById('gm-cmp-prog').style.width = `${(qIndex / totalQuestions) * 100}%`;
+
+  const list = document.getElementById('gm-answers-list');
+  list.innerHTML = '';
+
+  Object.entries(byDuo).forEach(([duo, answers]) => {
+    const block = document.createElement('div');
+    block.className = 'answer-block';
+    const col = DUO_COLORS[duo] || 'var(--text2)';
+    block.innerHTML = `<div class="duo-title" style="color:${col}">● ${DUO_LABELS[duo]}</div>`;
+    answers.forEach(a => {
+      const item = document.createElement('div');
+      item.className = 'answer-item';
+      item.innerHTML = `<div class="who">${a.name.toUpperCase()}</div>${a.answer}`;
+      block.appendChild(item);
+    });
+    // Match toggle
+    const matchRow = document.createElement('div');
+    matchRow.className = 'match-row';
+    matchRow.innerHTML = `
+      <button class="match-btn yes" id="yes-${duo}" onclick="setGMMatch('${duo}', true)">✓ Identiques</button>
+      <button class="match-btn no active" id="no-${duo}" onclick="setGMMatch('${duo}', false)">✗ Différentes</button>
+    `;
+    block.appendChild(matchRow);
+    list.appendChild(block);
+    gmMatchDecisions[duo] = false; // default: no match
+  });
+
+  goTo('s-gm-compare');
+}
+
+function setGMMatch(duo, val) {
+  gmMatchDecisions[duo] = val;
+  document.getElementById(`yes-${duo}`).className = `match-btn yes${val ? ' active' : ''}`;
+  document.getElementById(`no-${duo}`).className = `match-btn no${!val ? ' active' : ''}`;
+}
+
+function gmValidateQuestion() {
+  socket.emit('score_question', { code: myCode, duoScores: gmMatchDecisions });
+}
+
+function showMancheResult(room) {
+  const isGM = myRole === 'gm';
+  const manche = room.currentManche;
+  const prev = room.mancheScores[room.mancheScores.length - 1];
+
+  // Find winner of this manche
+  let maxScore = -1, winners = [];
+  if (prev) {
+    Object.entries(prev).forEach(([duo, score]) => {
+      if (score > maxScore) { maxScore = score; winners = [duo]; }
+      else if (score === maxScore) winners.push(duo);
+    });
+  }
+
+  const winnerText = winners.length > 1 ? 'Égalité !' : `${DUO_LABELS[winners[0]]} remporte la manche !`;
+  document.getElementById('mr-manche-label').textContent = `Manche ${manche} terminée`;
+  document.getElementById('mr-winner').textContent = winnerText;
+  document.getElementById('mr-emoji').textContent = winners.length > 1 ? '🤝' : '🏅';
+
+  // Manche scores
+  const ms = document.getElementById('mr-scores');
+  ms.innerHTML = `<div class="cap mb-12">Points cette manche</div>`;
+  if (prev) {
+    Object.entries(prev).forEach(([duo, score]) => {
+      const col = DUO_COLORS[duo] || 'var(--text2)';
+      ms.innerHTML += `<div class="score-line"><span style="color:${col};font-weight:700">${DUO_LABELS[duo]}</span><span class="score-val" style="color:${col}">${score}</span></div>`;
+    });
+  }
+
+  // Total scores
+  const ts = document.getElementById('mr-total-scores');
+  ts.innerHTML = '';
+  Object.entries(room.scores).forEach(([duo, score]) => {
+    const col = DUO_COLORS[duo] || 'var(--text2)';
+    ts.innerHTML += `<div class="score-line"><span style="color:${col};font-weight:600">${DUO_LABELS[duo]}</span><span style="font-weight:700;color:${col}">${score} pts</span></div>`;
+  });
+
+  // Show next button only for GM
+  const btnWrap = document.getElementById('mr-btn-wrap');
+  if (btnWrap) {
+    if (isGM) {
+      const isLast = manche >= room.totalManches;
+      btnWrap.innerHTML = `<button class="btn btn-accent" onclick="gmNextManche()">${isLast ? 'Voir les résultats finaux →' : 'Manche suivante →'}</button>`;
+    } else {
+      btnWrap.innerHTML = `<p class="waiting-msg waiting-pulse" style="text-align:center;color:var(--text2);">En attente du maître du jeu…</p>`;
+    }
+  }
+
+  goTo('s-manche-result');
+}
+
+function gmNextManche() {
+  socket.emit('next_manche', { code: myCode });
+}
+
+function showFinalScreen(room) {
+  let maxScore = -1, winners = [];
+  Object.entries(room.scores).forEach(([duo, score]) => {
+    if (score > maxScore) { maxScore = score; winners = [duo]; }
+    else if (score === maxScore) winners.push(duo);
+  });
+
+  const winnerText = winners.length > 1 ? '🤝 Égalité parfaite !' : `🏆 ${DUO_LABELS[winners[0]]} gagne !`;
+  document.getElementById('final-winner').textContent = winnerText;
+  document.getElementById('final-sub').textContent = winners.length > 1 ? 'Tous les duos pensent pareil !' : 'Ce duo pense vraiment en synchronisation !';
+
+  const fs = document.getElementById('final-scores');
+  fs.innerHTML = '<div class="cap mb-12">Scores finaux</div>';
+  const sorted = Object.entries(room.scores).sort((a,b) => b[1]-a[1]);
+  sorted.forEach(([duo, score], i) => {
+    const col = DUO_COLORS[duo] || 'var(--text2)';
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+    fs.innerHTML += `<div class="score-line"><span style="color:${col};font-weight:700">${medal} ${DUO_LABELS[duo]}</span><span class="score-val" style="color:${col}">${score}</span></div>`;
+  });
+
+  goTo('s-final');
+  if (myRole === 'gm' || winners.includes(myDuo)) launchConfetti();
+}
+
+function launchConfetti() {
+  const wrap = document.getElementById('confetti-wrap');
+  wrap.innerHTML = '';
+  const cols = Object.values(DUO_COLORS);
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('div');
+    p.className = 'cp';
+    p.style.cssText = `left:${Math.random()*100}vw;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*1.5}s;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px`;
+    wrap.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+// ===== ENTRY POINTS =====
+function chooseRole(role) {
+  myName = document.getElementById('home-name').value.trim();
+  if (!myName) { alert('Entrez votre prénom !'); return; }
+  myRole = role;
+  initSocket();
+  if (role === 'gm') {
+    socket.emit('create_room', { name: myName });
+  } else {
+    goTo('s-join');
+  }
+}
+
+function joinRoom() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (code.length !== 4) { alert('Code invalide (4 caractères).'); return; }
+  socket.emit('join_room', { code, name: myName });
+}
+
+// Auto-uppercase join code
+document.getElementById('join-code')?.addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase();
+});
+</script>
+</body>
+</html>
